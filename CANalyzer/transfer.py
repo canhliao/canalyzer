@@ -65,11 +65,6 @@ class Tranfer():
         if self.fromjob.nri != self.tojob.nri or self.fromjob.ncomp != self.tojob.ncomp:
             raise Exception("To and from jobs must be same component and real/complex.")
 
-        print("CQ")
-        print(self.fromjob.subshell)
-        print("GDV")
-        print(self.tojob.subshell)
-
         swap_pairs = []
         n = 0
         #for n in range(self.fromjob.nbasis):
