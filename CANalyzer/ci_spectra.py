@@ -56,6 +56,9 @@ class CI_spectra(Spectra, MO):
         self.nroots = None
         # number of non-zero excitation energies to be plotted
 
+        self.eigenVals = None
+        # numstates is the energy of each state
+
         self.energy = None
         # numfromstates x nstates matrix where element (i, j) is the excitation energy between states i and j
         # energies between from states are not populated and remain zero
@@ -114,11 +117,20 @@ class CI_spectra(Spectra, MO):
             startline_os = int(grepline.split("'")[1].split(":")[0])
             statecounter = self.numfromstates
             fromstatecounter = 1
-            while fromstatecounter <= self.numfromstates:
+            for x in range(self.nroots*2):
+                #X2 as CQ double spaces them...
                 parseline = linecache.getline(self.logfile, startline_os)
                 try:
-                    self.energy[fromstatecounter - 1, statecounter] = float(parseline.split("=")[1].split("f")[0])
-                    self.oscstr[fromstatecounter - 1, statecounter] = float(parseline.split("=")[-1].split("f")[0])
+                    #
+                    #CQ printing:
+                    #Ex State: endSt to state: fromSt En F
+                    #
+                    #Energy and Osc. storage in 2D array (len(fromStates) by 
+                    #len(nStates)).
+                    endSt = int(parseline.split()[2])-1
+                    fromSt = int(parseline.split()[5].split(':')[0])-1
+                    self.energy[fromSt, endSt] = float(parseline.split("=")[1].split("f")[0])
+                    self.oscstr[fromSt, endSt] = float(parseline.split("=")[-1].split("f")[0])
                     statecounter += 1
                 except:
                     pass
@@ -133,7 +145,7 @@ class CI_spectra(Spectra, MO):
             statecounter = 0
             lastcycle = False
 
-            while statecounter <= self.nstates - 1:
+            while statecounter <= self.nstates:
                 parseline = linecache.getline(self.logfile, startline_pdm).split()
                 try:
                     if "State" in parseline[0]:
@@ -142,10 +154,10 @@ class CI_spectra(Spectra, MO):
                         for n in occupation_numbers:
                             self.occnum[statecounter - 1, n[0] - 1] = n[1]
                         if statecounter == self.nstates:
-                            statecounter -= 1
                             lastcycle = True
                     else:
-                        if lastcycle:
+                        #Final round, presumes '--' is used as closer...
+                        if lastcycle and "-------------------" in parseline[0]:
                             statecounter += 1
                         occupation_numbers = [(int(x.split("(")[0]), float(x.split("(")[1][:-1])) for x in parseline]
                         for n in occupation_numbers:
@@ -153,6 +165,12 @@ class CI_spectra(Spectra, MO):
                 except:
                     pass
                 startline_pdm += 1
+            
+            # start parsing for EigenValues
+            self.eigenVals = np.asarray([0. for x in range(self.nstates)])
+            grepline = str(subprocess.check_output("grep -m%i 'State:' " %self.nstates + self.logfile, shell=True)).split('\\n')
+            for i in range(self.nstates):
+                self.eigenVals[i] = float(grepline[i].split(':')[-1])
 
 
     def decompose_byspaces(self):
